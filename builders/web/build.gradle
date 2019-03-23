@@ -1,0 +1,15 @@
+apply plugin: 'war'
+
+configurations {
+    moreLibs
+}
+
+dependencies {
+    compileOnly group: 'javax.servlet', name: 'javax.servlet-api', version: '4.0.0'
+    compileOnly group: 'javax.servlet.jsp', name: 'javax.servlet.jsp-api', version: '2.3.1'
+    compileOnly group: 'javax', name: 'javaee-api', version: '8.0'
+    compile project(':services')
+}
+
+war {
+}

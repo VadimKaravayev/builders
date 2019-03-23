@@ -1,0 +1,160 @@
+<project xmlns:ivy="antlib:org.apache.ivy.ant" name="builders" default="main" basedir=".">
+    <property name="projectName" value="builders"/>
+    <property name="main-class" value="com.builders.admin.AdminEntryPoint"/>
+
+    <property name="build.dir" location="bin"/>
+    <property name="test.build.dir" location="test-bin"/>
+    <property name="reports.tests" value="test-report"/>
+    <property name="dist.dir" location="dist"/>
+    <property name="lib.dir" value="lib"/>
+    <property name="dist.lib.dir" location="${dist.dir}/${lib.dir}"/>
+
+    <property name="web.dir" value="web/src/main/webapp"/>
+
+    <property name="pack.admin" location="com/builders/admin"/>
+    <property name="pack.services" location="com/builders/services"/>
+    <property name="pack.utils" location="com/builders/utils"/>
+    <property name="pack.web" location="com/builders/web"/>
+
+    <property name="admin.src.dir" location="admin/src/main"/>
+    <property name="services.src.dir" location="services/src/main"/>
+    <property name="utils.src.dir" location="utils/src/main"/>
+    <property name="web.src.dir" location="web/src/main"/>
+
+    <property name="admin.test.dir" location="admin/src/test/java"/>
+    <property name="services.test.dir" location="services/src/test/java"/>
+    <property name="utils.test.dir" location="utils/src/test/java"/>
+    <property name="web.test.dir" location="web/src/test/java"/>
+
+    <property name="build.dir.admin" location="${build.dir}/${pack.admin}"/>
+    <property name="build.dir.services" location="${build.dir}/${pack.services}"/>
+    <property name="build.dir.utils" location="${build.dir}/${pack.utils}"/>
+    <property name="build.dir.web" location="${build.dir}/${pack.web}"/>
+
+    <path id="classpath">
+        <fileset dir=".">
+            <include name="${lib.dir}/*.jar"/>
+            <exclude name="${lib.dir}/*sources.jar"/>
+            <exclude name="${lib.dir}/*javadoc.jar"/>
+        </fileset>
+    </path>
+
+    <path id="test.class.path">
+        <pathelement location="${build.dir.utils}"/>
+        <pathelement location="${build.dir.services}"/>
+        <pathelement location="${build.dir.admin}"/>
+        <pathelement location="${build.dir.web}"/>
+        <path refid="classpath"/>
+    </path>
+
+    <pathconvert property="classpath.name" pathsep=" ">
+        <path refid="classpath"/>
+        <mapper>
+            <chainedmapper>
+                <flattenmapper/>
+                <globmapper from="*.jar" to="lib/*.jar"/>
+            </chainedmapper>
+        </mapper>
+    </pathconvert>
+
+    <target name="ivy" description="Install ivy">
+        <mkdir dir="${user.home}/.ant/lib"/>
+        <get dest="${user.home}/.ant/lib/ivy.jar"
+             src="http://search.maven.org/remotecontent?filepath=org/apache/ivy/ivy/2.4.0-rc1/ivy-2.4.0-rc1.jar"/>
+    </target>
+
+    <target name="init">
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${dist.dir}"/>
+        <mkdir dir="${dist.lib.dir}"/>
+        <mkdir dir="${test.build.dir}"/>
+    </target>
+
+    <target name="resolve" description="retrieve dependencies with ivy">
+        <ivy:retrieve/>
+    </target>
+
+    <target name="compile" depends="init, resolve" description="compile the source ">
+        <javac includeantruntime="false" srcdir="${utils.src.dir}" destdir="${build.dir}" classpathref="classpath"/>
+        <javac includeantruntime="false" srcdir="${services.src.dir}" destdir="${build.dir}" classpathref="classpath"/>
+        <javac includeantruntime="false" srcdir="${admin.src.dir}" destdir="${build.dir}" classpathref="classpath"/>
+        <javac includeantruntime="false" srcdir="${web.src.dir}" destdir="${build.dir}" classpathref="classpath"/>
+    </target>
+
+    <target name="test-compile" depends="init, resolve" description="compile test classes">
+        <javac includeantruntime="false" srcdir="${utils.src.dir}" destdir="${test.build.dir}" classpathref="classpath"/>
+        <javac includeantruntime="false" srcdir="${services.src.dir}" destdir="${test.build.dir}" classpathref="classpath"/>
+        <javac includeantruntime="false" srcdir="${admin.src.dir}" destdir="${test.build.dir}" classpathref="classpath"/>
+        <javac includeantruntime="false" srcdir="${web.src.dir}" destdir="${test.build.dir}" classpathref="classpath"/>
+        <copy todir="${test.build.dir}">
+            <fileset dir="utils/src/test/resources"/>
+            <fileset dir="services/src/test/resources"/>
+            <fileset dir="admin/src/test/resources"/>
+            <fileset dir="web/src/test/resources"/>
+        </copy>
+        <javac srcdir="${utils.test.dir}" destdir="${test.build.dir}" classpathref="test.class.path"/>
+        <javac srcdir="${services.test.dir}" destdir="${test.build.dir}" classpathref="test.class.path"/>
+        <javac srcdir="${admin.test.dir}" destdir="${test.build.dir}" classpathref="test.class.path"/>
+        <javac srcdir="${web.test.dir}" destdir="${test.build.dir}" classpathref="test.class.path"/>
+    </target>
+
+    <target name="copy-dependencies">
+        <copy todir="${dist.lib.dir}">
+            <fileset dir="${lib.dir}" includes="**/*.jar" excludes="**/*sources.jar, **/*javadoc.jar"/>
+        </copy>
+    </target>
+
+    <target name="jar" depends="compile, copy-dependencies" description="package, output to JAR">
+
+        <echo message="classpath.name : ${classpath.name} "/>
+
+        <jar jarfile="${dist.dir}/${projectName}.jar">
+            <fileset dir="${build.dir}" excludes="**/web/**"/>
+            <fileset dir="${utils.src.dir}/resources"/>
+            <fileset dir="${services.src.dir}/resources"/>
+            <fileset dir="${admin.src.dir}/resources"/>
+            <manifest>
+                <attribute name="Main-Class" value="${main-class}"/>
+                <attribute name="Class-Path" value="${classpath.name}"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="war" depends="compile, copy-dependencies" description="package, output to WAR">
+        <copy todir="${build.dir}">
+            <fileset dir="web/src/main/resources"/>
+            <fileset dir="services/src/main/resources"/>
+            <fileset dir="utils/src/main/resources"/>
+        </copy>
+        <war warfile="${dist.dir}/${projectName}.war" webxml="${web.dir}/WEB-INF/web.xml">
+            <fileset dir="${web.dir}">
+                <include name="**/*.*"/>
+                <exclude name="web.xml"/>
+            </fileset>
+            <classes dir="${build.dir}" excludes="**/admin/**"/>
+        </war>
+    </target>
+
+    <target name="clean" description="clean up">
+        <delete dir="${build.dir}"/>
+        <delete dir="${dist.dir}"/>
+        <delete dir="${reports.tests}"/>
+        <delete dir="${lib.dir}"/>
+        <delete dir="${test.build.dir}"/>
+    </target>
+
+    <target name="test" depends="test-compile, copy-dependencies" description="test checking">
+        <mkdir dir="${reports.tests}/"/>
+        <junit printsummary="yes" haltonerror="yes" haltonfailure="yes">
+            <classpath location="lib/junit-4.12.jar"/>
+            <batchtest todir="${reports.tests}">
+                <fileset dir="test-bin/com/builders/utils" includes="**/*Test.java"/>
+                <fileset dir="test-bin/com/builders/services" includes="**/*Test.java"/>
+                <fileset dir="test-bin/com/builders/admin" includes="**/*Test.java"/>
+                <fileset dir="test-bin/com/builders/web" includes="**/*Test.java"/>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="main" depends="clean, compile, test, jar, war"/>
+</project>

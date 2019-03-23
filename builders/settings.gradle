@@ -1,0 +1,5 @@
+rootProject.name = 'Multi module gradle project'
+include 'admin'
+include 'services'
+include 'utils'
+include 'web'
